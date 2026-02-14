@@ -1,0 +1,148 @@
+const DEFAULT_MODEL = "gpt-4o-mini";
+
+chrome.runtime.onInstalled.addListener(async () => {
+  if (chrome.sidePanel?.setPanelBehavior) {
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true
+    });
+  }
+});
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "smart_code_helper_run") return;
+
+  const [tab
+  ] = await chrome.tabs.query({ active: true, currentWindow: true
+  });
+  if (!tab?.id) return;
+
+  try {
+    await chrome.sidePanel.open({ tabId: tab.id
+    });
+  } catch (e) {}
+
+  let extracted;
+
+  try {
+    extracted = await chrome.tabs.sendMessage(tab.id,
+    { type: "EXTRACT_CODE"
+    });
+  } catch (err) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id
+        },
+        files: [
+          "content.js"
+        ]
+      });
+      extracted = await chrome.tabs.sendMessage(tab.id,
+      { type: "EXTRACT_CODE"
+      });
+    } catch (e) {
+      await chrome.runtime.sendMessage({
+        type: "RESULT",
+        ok: false,
+        error: "Could not connect to the page."
+      });
+      return;
+    }
+  }
+
+  if (!extracted?.code || extracted.code.trim().length < 1) {
+    await chrome.runtime.sendMessage({
+      type: "RESULT",
+      ok: false,
+      error: "No code blocks found on this page."
+    });
+    return;
+  }
+
+  await chrome.runtime.sendMessage({
+    type: "STATUS",
+    message: `Found ${extracted.blocksFound
+    } block(s). Sending to AI...`
+  });
+
+  const { openai_api_key
+  } = await chrome.storage.sync.get("openai_api_key");
+
+  if (!openai_api_key) {
+    await chrome.runtime.sendMessage({
+      type: "RESULT",
+      ok: false,
+      error: "Missing API key."
+    });
+    return;
+  }
+
+  try {
+    const aiText = await callOpenAI(openai_api_key, extracted.code, extracted.pageUrl);
+
+    await chrome.runtime.sendMessage({
+      type: "RESULT",
+      ok: true,
+      data: {
+        pageUrl: extracted.pageUrl,
+        blocksFound: extracted.blocksFound,
+        output: aiText
+      }
+    });
+  } catch (err) {
+    await chrome.runtime.sendMessage({
+      type: "RESULT",
+      ok: false,
+      error: err?.message || "OpenAI request failed."
+    });
+  }
+});
+
+async function callOpenAI(apiKey, code, pageUrl) {
+  const system = `You are a senior software engineer.
+Given code extracted from a webpage, return: 1) Corrected code
+2) Explanation
+3) Improvements
+4) Unit tests
+Keep formatting clean.`;
+
+  const user = `Source page: ${pageUrl
+  }
+
+Extracted code:
+\`\`\`
+${code
+  }
+\`\`\`
+`;
+
+  const resp = await fetch("https://api.openai.com/v1/chat/completions",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey
+      }`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: system
+        },
+        { role: "user", content: user
+        }
+      ],
+      temperature: 0.2
+    })
+  });
+
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`OpenAI error (${resp.status
+    }): ${txt
+    }`);
+  }
+
+  const json = await resp.json();
+  return json?.choices?.[
+    0
+  ]?.message?.content;
+}

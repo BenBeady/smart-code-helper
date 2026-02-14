@@ -57,3 +57,76 @@ background.js   → Service worker logic + OpenAI API call
 content.js      → Code extraction + comment stripping
 panel.html      → Side panel UI
 panel.js        → UI interaction + state handling
+
+🧪 Installation (Developer Mode)
+
+Clone or download this repository.
+
+Open Chrome and navigate to:
+
+chrome://extensions
+
+Enable Developer Mode (top right).
+
+Click "Load unpacked".
+
+Select the project folder.
+
+The extension will now be active.
+
+🔑 API Key Setup
+
+Open the extension side panel.
+
+Paste your OpenAI API key.
+
+Click Save.
+
+The key is stored locally in Chrome Sync Storage.
+
+⚠️ Production Note
+
+This version is designed for personal or demonstration use.
+
+For public release:
+
+API requests should be proxied through a secure backend
+
+API keys should never be exposed client-side
+
+Proper authentication should be implemented
+
+💡 Use Case
+
+This project demonstrates:
+
+Building a full Chrome extension using Manifest V3
+
+Service worker communication
+
+Content script injection
+
+DOM extraction
+
+External API integration
+
+Secure key storage
+
+Clean UI rendering in a Chrome Side Panel
+
+📌 Future Improvements
+
+Language detection before comment stripping
+
+Syntax highlighting in the panel
+
+Streaming AI responses
+
+Backend proxy for production deployment
+
+Chrome Web Store publication
+
+👨‍💻 Author
+
+Benjamen Beady
+Information Technology Graduate

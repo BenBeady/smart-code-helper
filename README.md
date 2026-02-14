@@ -1,9 +1,5 @@
-Smart Code Helper
-
 Smart Code Helper is an AI-powered Chrome Extension that extracts code from any webpage and sends it to OpenAI for intelligent analysis.
-
-The extension automatically detects <pre> and <code> blocks on a page and provides:
-
+The extension automatically detects and blocks on a page and provides
 • Code corrections
 • Clear explanations
 • Suggested improvements
